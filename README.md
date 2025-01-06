@@ -2,118 +2,110 @@
 Proposal for upcoming implementaion of enhancing CORIM support for [Verasion/services](https://github.com/veraison/services)
 # Overview
 
-1. Introduction
+**Step 1: Analyze and Modify CoRIM Generation**
 
-The Veraison project provides a framework for remote attestation, enabling verification of the integrity and authenticity of software and hardware components. A critical aspect of this framework is the use of Concise Reference Integrity Manifests (CoRIMs), which encapsulate reference values and endorsements necessary for attestation. To enhance security and trust, especially in collaborative environments, supporting multi-signature CoRIMs is essential. This document outlines a comprehensive plan to integrate multi-signature support into Veraison services, ensuring compliance with COSE (CBOR Object Signing and Encryption) standards as specified in RFC 8152.
+Current State: CoRIM generation in Veraison does not support multi-signatures. You'll need to modify the existing cocli tool (used for generating CoRIMs).
+Actions:
 
-2. Background
+Update CoRIM Schema: Modify the CoRIM schema to accept multiple signatures, ensuring it adheres to COSE standards for multi-signatures.
+Use COSE Multi-Signature Structure (COSE_Multi_Signature) for signatures, where the list of signatures is embedded as part of the CoRIM metadata.
+Implement the signatures[] field to store the multiple signatures.
+Integrate COSE Libraries: Utilize Go libraries like veraison/go-cose for signing and verifying multi-signatures.
+Modify cocli to Handle Multi-Signatures:
+Modify the tool’s CoRIM creation logic to accept and generate multi-signatures.
+Accept multiple signing keys (from different entities or authorities).
+Output a CoRIM with the necessary multi-signature structure.
 
-2.1. CoRIM Overview
+**Step 2: Implement Signature Validation in Veraison Plugin**
 
-CoRIMs are standardized data structures that convey reference integrity measurements and endorsements. They play a pivotal role in the attestation process by providing verifiable information about the expected state of a device or component.
+Current State: Veraison's existing plugins for attestation verification need to be extended to support multi-signatures.
+Actions:
 
-2.2. COSE and RFC 8152
+Modify the Plugin for CoRIM Verification:
+Extend the current Veraison plugin architecture to verify multi-signatures.
+Leverage COSE multi-signature verification methods (such as verifying the set of public keys corresponding to the signatures).
+Ensure the plugin can validate the integrity of each component and the aggregation of the signatures, as per COSE standards.
+Signature Handling:
+Implement a signature aggregation logic to handle cases where the signatures need to be verified across multiple components in the CoRIM.
+Ensure the integrity of the CoRIM’s content is validated against all signatures before trust is established.
 
-COSE defines a framework for securing CBOR-encoded data, including support for signatures, message authentication codes, and encryption. RFC 8152 specifies the structures and processes for applying these security services to CBOR data.
+**Step 3: Integration of COSE Multi-Signature Handling**
 
-2.3. Multi-Signature Support
+Current State: Veraison does not yet support multi-signature in COSE format.
+Actions:
 
-Multi-signature mechanisms require multiple parties to sign a document or transaction, enhancing security by distributing trust. In the context of CoRIMs, multi-signature support ensures that multiple entities can endorse a manifest, providing a higher assurance level for the attestation process.
+Adapt COSE for Multi-Signatures:
+COSE supports multi-signature in a format where a signature is generated over the concatenation of the message and signatures.
+Implement COSE_Multi_Signature to capture and verify multiple signatures for a CoRIM.
+Public Key Handling:
+Define and implement a method to handle the public keys of the signers in a multi-signature scenario.
+Ensure public keys are encoded according to COSE standards and matched with the correct signatures.
+Ensure COSE Compliance:
+Validate that the multi-signature structure complies with COSE standards for signing and verifying multiple signatures in the context of CoRIM.
 
-3. Objectives
+**Step 4: Ensure Secure Key Management and Configuration**
 
-Enhance Security: Implement multi-signature support to ensure that CoRIMs are endorsed by multiple trusted entities, reducing the risk of single points of failure.
+Current State: Secure management of keys is crucial for the multi-signature process.
+Actions:
 
-Standards Compliance: Ensure that the implementation adheres to COSE standards as outlined in RFC 8152, facilitating interoperability and consistency.
+Key Management:
+Implement secure key storage mechanisms (e.g., using hardware security modules or secure key vaults).
+Implement access control to manage the signing keys, ensuring only authorized signers can sign CoRIMs.
+Define Key Usage Policies:
+Create rules for key usage in the context of multi-signatures (e.g., 2-out-of-3, threshold signatures).
+Enforce policies on signature validation to ensure at least the required number of signatures are validated for the CoRIM to be considered valid.
 
-Seamless Integration: Incorporate multi-signature support into existing Veraison services without disrupting current functionalities.
+**Step 5: Test CoRIM with Multi-Signature Support**
 
-4. Implementation Plan
+Current State: Testing the integration of multi-signatures in CoRIMs and Veraison services is essential.
+Actions:
 
-4.1. Analysis and Design
+Unit Testing for CoRIM Generation:
+Test the new CoRIM generation logic by generating CoRIMs with multiple signatures and verifying them using the cocli tool.
+Unit Testing for Plugin:
+Write unit tests for the Veraison plugin that verify the new multi-signature handling capabilities.
+Integration Testing:
+Test the complete process: generate a multi-signed CoRIM, verify the signatures through Veraison, and check that the integrity of the data is maintained.
 
-Review COSE Structures: Conduct an in-depth analysis of COSE structures related to multi-signature support, focusing on the 'COSE_Sign' and 'COSE_Signature' objects as defined in RFC 8152.
+**Step 6: Update Documentation**
 
-Define CoRIM Extensions: Determine necessary extensions to the current CoRIM schema to accommodate multiple signatures, ensuring alignment with existing standards and practices.
+Current State: Clear documentation of the new functionality is crucial for users and developers.
+Actions:
 
-Security Considerations: Assess potential security implications, including key management, signature validation order, and the impact on the overall trust model.
+Update CoRIM Generation Docs:
+Document the changes to the CoRIM generation process, explaining how multi-signatures are added and verified.
+Provide examples of multi-signed CoRIMs.
+Update Veraison Plugin Docs:
+Include details on the new signature verification methods and configurations for multi-signature handling in Veraison plugins.
+Provide sample configuration files and troubleshooting tips for multi-signature verification.
 
-4.2. Development
+**Step 7: Review Security Implications**
 
-Extend CoRIM Schema: Modify the CoRIM data model to include fields for multiple signatures, ensuring backward compatibility with existing single-signature implementations.
+Current State: The implementation of multi-signatures requires robust security practices to protect the integrity of the system.
+Actions:
 
-Implement Multi-Signature Handling: Develop functionality within Veraison services to process CoRIMs with multiple signatures, including:
+Security Audits:
+Perform code reviews and security audits on the multi-signature handling logic.
+Penetration Testing:
+Simulate attacks on the multi-signature implementation to ensure there are no vulnerabilities such as signature spoofing or key exposure risks.
+Compliance Checks:
+Ensure the implementation complies with relevant security standards (e.g., FIPS 140-2 for cryptographic modules).
 
-Signature Aggregation: Combine multiple signatures into a single CoRIM structure.
+**Step 8: Deploy to Staging and Production**
 
-Signature Validation: Verify each signature against the corresponding public key, ensuring that all required endorsements are present and valid.
+Current State: The solution needs to be deployed and monitored.
+Actions:
 
-Update Provisioning and Verification Services: Enhance existing services to support the creation, distribution, and validation of multi-signature CoRIMs.
+Deploy to Staging:
+Deploy the updated Veraison services to a staging environment for further validation.
+Monitor for Issues:
+Monitor for any issues related to multi-signature verification, performance, or security breaches.
+Use logging to capture detailed error reports during CoRIM generation and verification.
 
-4.3. Testing and Validation
-
-Unit Testing: Develop comprehensive tests for individual components handling multi-signature CoRIMs to ensure correctness and robustness.
-
-Integration Testing: Conduct end-to-end tests to validate the interaction between different Veraison services when processing multi-signature CoRIMs.
-
-Compliance Testing: Ensure that the implementation meets all relevant COSE standards as specified in RFC 8152, using standardized test vectors where available.
-
-4.4. Documentation and Training
-
-Update Documentation: Revise existing documentation to reflect the new multi-signature capabilities, including API references, data models, and usage guidelines.
-
-Develop Training Materials: Create resources to assist users and developers in understanding and utilizing the new features effectively.
-
-5. Integration with Security Standards
-
-COSE Compliance: Ensure that all cryptographic operations related to multi-signature support adhere strictly to COSE standards, promoting interoperability and security.
-
-Key Management: Implement robust key management practices, including secure storage, rotation, and revocation mechanisms, to support multi-signature operations.
-
-Audit and Logging: Enhance logging mechanisms to provide detailed records of multi-signature processing activities, facilitating auditing and troubleshooting.
-
-6. Timeline and Milestones
-
-Phase 1: Analysis and Design (4 weeks)
-
-Complete COSE structure review.
-
-Define necessary CoRIM schema extensions.
-
-Conduct security assessment.
-
-Phase 2: Development (8 weeks)
-
-Extend CoRIM schema.
-
-Implement multi-signature handling functionality.
-
-Update provisioning and verification services.
-
-Phase 3: Testing and Validation (4 weeks)
-
-Perform unit, integration, and compliance testing.
-Phase 4: Documentation and Training (2 weeks)
-
-Update documentation.
-
-Develop training materials.
-
-7. Risk Management
-
-Compatibility Issues: Mitigate potential compatibility problems by ensuring backward compatibility and providing clear migration paths for existing users.
-
-Security Vulnerabilities: Address potential security risks through thorough testing, code reviews, and adherence to best practices in cryptographic implementations.
-
-Resource Constraints: Allocate sufficient resources and adjust timelines as necessary to accommodate the complexity of implementing multi-signature support.
-
-8. Conclusion
-
-Integrating multi-signature CoRIM support into Veraison services represents a significant enhancement in the security and trustworthiness of the attestation process. By adhering to COSE standards as specified in RFC 8152 and following the comprehensive plan outlined above, Veraison can provide robust support for multi-signature CoRIMs, meeting the
 
 # Proposal
 
-# Goal
+# Goals
 
 1. Enhanced Trust and Security
    Proposal Alignment:
